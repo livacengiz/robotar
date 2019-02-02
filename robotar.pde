@@ -1,9 +1,15 @@
+// LIBRARIES
 import ddf.minim.*;
 import ddf.minim.signals.*;
 import javax.sound.sampled.*;
- import KinectPV2.*;
- import KinectPV2.KJoint;
+import KinectPV2.*;
+import KinectPV2.KJoint;
 
+// ========== KINECT ======
+KinectPV2 kinect;
+
+
+// ========== SOUND ======
 Minim minim;
 Minim minim1;
 AudioInput in;
@@ -15,9 +21,25 @@ float s;
 float robotar;
 float t = 0;
 
-import javax.sound.sampled.*;
+// ========MOVER======
 
- KinectPV2 kinect;
+//skeleton variables
+int numBones = bones.length;
+//int numJoints = 26;
+static int numParticles = 300;
+
+// global particle vars
+float topspeed = 15;
+float noneTrackScale = 1;
+float trackScale = 3;
+float lengthRange = 30;
+float edgePadding = 100;
+
+// toggle the help text
+boolean showHelp = false;
+
+
+Mover[][] movers;
 
 //==========COLORS
 
@@ -28,32 +50,32 @@ color blue = color(0, 0, 255);
 color green = color(0, 255, 0);
 int aspect = 4;
 
+
+
 void setup() {
 	 //size(1024, 768, P3D);
 	fullScreen(P3D);
-
+	setupParticles();
+	// MINIM SETUP
 	minim = new Minim(this);
 	minim1 = new Minim(this);
-
 	mixerInfo = AudioSystem.getMixerInfo();
-
-	for(int i = 0; i < mixerInfo.length; i++)
-	{println(i + " = " + mixerInfo[i].getName());}
-
+	for(int i = 0; i < mixerInfo.length; i++) {
+		println(i + " = " + mixerInfo[i].getName());
+	}
 	minim.setInputMixer(AudioSystem.getMixer(mixerInfo[6]));
 	in = minim.getLineIn(Minim.MONO);
 
 	minim1.setInputMixer(AudioSystem.getMixer(mixerInfo[4]));
     robotarInput = minim1.getLineIn(Minim.MONO);
 
-	 kinect = new KinectPV2(this);
-	
+	// KINECT SETUP
+	kinect = new KinectPV2(this);
 	 //kinect.enableBodyTrackImg(true);
-  kinect.enableSkeletonColorMap(true);
+  	kinect.enableSkeletonColorMap(true);
      //kinect.enableDepthMaskImg(true);
-	
-     kinect.init();
 
+    kinect.init();
 	background(0);
 	noStroke();
 	smooth();
@@ -66,79 +88,76 @@ void draw( ) {
 	background(0);
 	in.disableMonitoring();
 	robotarInput.disableMonitoring();
-	// fft.forward( in.mix );
-	// fft1.forward( robotarInput.mix );
 
-pushMatrix();
-fill(255, 0, 255);
-textSize(32);
-stroke(255);
-text(frameRate, 200, 30); 
+	pushMatrix();
+		fill(255, 0, 255);
+		textSize(32);
+		stroke(255);
+		text(frameRate, 200, 30);
+	popMatrix();
 
-popMatrix();
+	// ====================================== SKELETON START ============================
 
+	ArrayList<KSkeleton> skeletonArray = kinect.getSkeletonColorMap();
 
-  ArrayList<KSkeleton> skeletonArray =  kinect.getSkeletonColorMap();
+	for (int i = 0; i < skeletonArray.size(); i++) {
 
-  //individual JOINTS
-  for (int i = 0; i < skeletonArray.size(); i++) {
-    KSkeleton skeleton = (KSkeleton) skeletonArray.get(i);
-    if (skeleton.isTracked()) {
-      KJoint[] joints = skeleton.getJoints();
+      //get the skeleton
+      KSkeleton skeleton = (KSkeleton) skeletonArray.get(i);
 
-      color col  = skeleton.getIndexColor();
-      fill(col);
-      stroke(col);
-      drawBody(joints);
+      //check if it is being tracked and the first person
+      if (skeleton.isTracked() && i == 0) {
 
-      //draw different color for each hand state
-      drawHandState(joints[KinectPV2.JointType_HandRight]);
-      drawHandState(joints[KinectPV2.JointType_HandLeft]);
+        //get all the joints
+        KJoint[] joints = skeleton.getJoints();
+
+        // loop through the bones and update movers to each
+        for(int x = 0; x < bones.length; x++) {
+          updateMoverToJoints(bones[x], movers[x], joints);
+        }
+      }
     }
-  }
 
-  fill(255, 0, 0);
-  text(frameRate, 50, 50);
+	//if there is no skeleton
+    if (skeletonArray.size() == 0) {
 
+      //send movers to random location
+      updateMoversToRandom();
 
-//	 ArrayList<PImage> bodyTrackList = kinect.getBodyTrackUser();
-	
-//	 for (int i = 0; i < bodyTrackList.size(); i++) {
-//	   PImage bodyTrackImg = (PImage)bodyTrackList.get(i);
-//	   if (i <= 2) {
-//      imageMode(CENTER);
-//  	 	image(bodyTrackImg, width/2, height-120, 320, 240);
-//      }
-//	 }
+      // stops the Z plane being rendered, known hack for 2D on top of 3D
+      //hint(DISABLE_DEPTH_TEST);
 
+    }
 
+	// ====================================== SKELETON END ============================
+
+	// ====================================== SOUND START ============================
+
+	// STREET SOUND
 	for(int i = 0; i < in.bufferSize() -1; i++){
-		s = in.left.get(i)*200;
+		setupStreet(in.left.get(i)*200);
 	}
-	if (s > 0.3) {
-		ps.addParticle(s, new PVector(random(0, width), random(10,height-10)));
-	}
-	ps.run();
-
-
+	// ROBOTAR SOUND
 	for(int i = 0; i < robotarInput.bufferSize() -1; i++){
 		if (robotarInput.left.get(i)*200  > 0.3 && robotarInput.left.get(i)*200 < 14)  {
           robotar = robotarInput.left.get(i)*200;
       }
 	}
+
+	// ====================================== SOUND END ============================
 pushMatrix();
 	beginShape();
     float mappedRobotar = map(robotar, 0, 12, 0, 1);
     float rt = constrain(mappedRobotar, 0, 1);
 		stroke(255);
-    
+
 		strokeWeight(4);
 		smooth();
 		translate(width/2,height/2);
 		for (float theta = 0; theta <= 2 * PI; theta += 0.01) {
 			float rad = r(theta,
 				2, //a
-        1, //b
+        		1, //b
 				1, // m
 				1, // n1
 				sin(t) * 0.05 + 0.05, //n2
@@ -148,45 +167,16 @@ pushMatrix();
 			float y = rad * sin(theta) * 150;
 			vertex(x,y);
 		}
-//println(mappedRobotar);
 	endShape();
 popMatrix();
 
 	t = t + 0.00005 + rt;
-  
+
   if (t > height/2) {
     t = 0;
   }
 
-
-
 }
-
-// void keyPressed() {
-// 	switch (key) {
-// 		case 1: aspect = 1;
-// 				break;
-// 		case 2: aspect = 2;
-// 				break;
-// 		case 3: aspect = 3;
-// 				break;
-// 		case 4: aspect = 4;
-// 				break;
-// 		case 5: aspect = 5;
-// 				break;
-// 		case 6: aspect = 6;
-// 				break;
-// 		case 7: aspect = 7;
-// 				break;
-// 		case 8: aspect = 8;
-// 				break;
-// 		case 9: aspect = 9;
-// 				break;
-// 		default: aspect = 4;
-// 				break;
-// 	}
-// }
-
 
 
 float r(float theta, float a, float b, float m, float n1, float n2, float n3) {
@@ -198,100 +188,69 @@ void mousePressed() {
   println(frameRate);
 }
 
-
-//DRAW BODY
-void drawBody(KJoint[] joints) {
-  drawBone(joints, KinectPV2.JointType_Head, KinectPV2.JointType_Neck);
-  drawBone(joints, KinectPV2.JointType_Neck, KinectPV2.JointType_SpineShoulder);
-  drawBone(joints, KinectPV2.JointType_SpineShoulder, KinectPV2.JointType_SpineMid);
-  drawBone(joints, KinectPV2.JointType_SpineMid, KinectPV2.JointType_SpineBase);
-  drawBone(joints, KinectPV2.JointType_SpineShoulder, KinectPV2.JointType_ShoulderRight);
-  drawBone(joints, KinectPV2.JointType_SpineShoulder, KinectPV2.JointType_ShoulderLeft);
-  drawBone(joints, KinectPV2.JointType_SpineBase, KinectPV2.JointType_HipRight);
-  drawBone(joints, KinectPV2.JointType_SpineBase, KinectPV2.JointType_HipLeft);
-
-  // Right Arm
-  drawBone(joints, KinectPV2.JointType_ShoulderRight, KinectPV2.JointType_ElbowRight);
-  drawBone(joints, KinectPV2.JointType_ElbowRight, KinectPV2.JointType_WristRight);
-  drawBone(joints, KinectPV2.JointType_WristRight, KinectPV2.JointType_HandRight);
-  drawBone(joints, KinectPV2.JointType_HandRight, KinectPV2.JointType_HandTipRight);
-  drawBone(joints, KinectPV2.JointType_WristRight, KinectPV2.JointType_ThumbRight);
-
-  // Left Arm
-  drawBone(joints, KinectPV2.JointType_ShoulderLeft, KinectPV2.JointType_ElbowLeft);
-  drawBone(joints, KinectPV2.JointType_ElbowLeft, KinectPV2.JointType_WristLeft);
-  drawBone(joints, KinectPV2.JointType_WristLeft, KinectPV2.JointType_HandLeft);
-  drawBone(joints, KinectPV2.JointType_HandLeft, KinectPV2.JointType_HandTipLeft);
-  drawBone(joints, KinectPV2.JointType_WristLeft, KinectPV2.JointType_ThumbLeft);
-
-  // Right Leg
-  drawBone(joints, KinectPV2.JointType_HipRight, KinectPV2.JointType_KneeRight);
-  drawBone(joints, KinectPV2.JointType_KneeRight, KinectPV2.JointType_AnkleRight);
-  drawBone(joints, KinectPV2.JointType_AnkleRight, KinectPV2.JointType_FootRight);
-
-  // Left Leg
-  drawBone(joints, KinectPV2.JointType_HipLeft, KinectPV2.JointType_KneeLeft);
-  drawBone(joints, KinectPV2.JointType_KneeLeft, KinectPV2.JointType_AnkleLeft);
-  drawBone(joints, KinectPV2.JointType_AnkleLeft, KinectPV2.JointType_FootLeft);
-
-  drawJoint(joints, KinectPV2.JointType_HandTipLeft);
-  drawJoint(joints, KinectPV2.JointType_HandTipRight);
-  drawJoint(joints, KinectPV2.JointType_FootLeft);
-  drawJoint(joints, KinectPV2.JointType_FootRight);
-
-  drawJoint(joints, KinectPV2.JointType_ThumbLeft);
-  drawJoint(joints, KinectPV2.JointType_ThumbRight);
-
-  drawJoint(joints, KinectPV2.JointType_Head);
+void setupStreet(bufferSize) {
+	if (bufferSize > 0.3) {
+		ps.addParticle(s, new PVector(random(0, width), random(10,height-10)));
+		ps.run();
+	}
 }
 
-//draw joint
-void drawJoint(KJoint[] joints, int jointType) {
-  pushMatrix();
-  translate(joints[jointType].getX(), joints[jointType].getY(), joints[jointType].getZ());
-  ellipse(0, 0, 25, 25);
-  popMatrix();
+// function calls the update of a mover and gives it a random choice between two joints
+// this creates the bone effect
+void updateMoverToJoints(int[] bone, Mover[] JointMovers, KJoint[] joints) {
+
+  int limit = (bone.length > 2) ? bone[2] : numParticles;
+
+  //loop through the movers passed in
+  for (int a = 0; a < limit; a++) {
+
+    //random number between 1 and 10
+    int num = int(random(1, 10));
+
+    //check if random number is even. set the the joint
+    int joint = (num%2 == 0) ? bone[0] : bone[1];
+
+    //update and display the movers
+    JointMovers[a].update(joints[joint]);
+    //JointMovers[a].checkEdges();
+    JointMovers[a].display();
+  }
 }
 
-//draw bone
-void drawBone(KJoint[] joints, int jointType1, int jointType2) {
-  pushMatrix();
-  translate(joints[jointType1].getX(), joints[jointType1].getY(), joints[jointType1].getZ());
-  ellipse(0, 0, 25, 25);
-  popMatrix();
-  line(joints[jointType1].getX(), joints[jointType1].getY(), joints[jointType1].getZ(), joints[jointType2].getX(), joints[jointType2].getY(), joints[jointType2].getZ());
+void updateMoversToRandom(){
+  // loop through bones
+  for (int x = 0; x < bones.length; x++) {
+
+    // if there has been a particle limit set on a bone
+    int limit = (bones[x].length > 2) ? bones[x][2] : numParticles;
+
+    // loop through movers
+    for (int a = 0; a < limit; a++) {
+
+      // send null to show no joint available, mover will pick a random direction
+      movers[x][a].update(null);
+      movers[x][a].checkEdges();
+      movers[x][a].display();
+    }
+  }
 }
 
-//draw hand state
-void drawHandState(KJoint joint) {
-  noStroke();
-  handState(joint.getState());
-  pushMatrix();
-  translate(joint.getX(), joint.getY(), joint.getZ());
-  ellipse(0, 0, 70, 70);
-  popMatrix();
-}
+// initialises all the particles
+void setupParticles() {
 
-/*
-Different hand state
- KinectPV2.HandState_Open
- KinectPV2.HandState_Closed
- KinectPV2.HandState_Lasso
- KinectPV2.HandState_NotTracked
- */
-void handState(int handState) {
-  switch(handState) {
-  case KinectPV2.HandState_Open:
-    fill(0, 255, 0);
-    break;
-  case KinectPV2.HandState_Closed:
-    fill(255, 0, 0);
-    break;
-  case KinectPV2.HandState_Lasso:
-    fill(0, 0, 255);
-    break;
-  case KinectPV2.HandState_NotTracked:
-    fill(255, 255, 255);
-    break;
+  // set the amount of particles
+  movers = new Mover[numBones][numParticles];
+
+  // Initializing all the particles
+  for (int i = 0; i <numBones; i++) {
+
+    // if there has been a particle limit set on a bone
+    int limit = (bones[i].length > 2) ? bones[i][2] : numParticles;
+
+    for (int a = 0; a < limit; a++) {
+
+      // for each particle pass in it's params
+      movers[i][a] = new Mover(topspeed, trackScale, noneTrackScale, lengthRange, edgePadding);
+    }
   }
 }
