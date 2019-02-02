@@ -111,11 +111,11 @@ class Mover {
   void display() {
 
     // line colour
-    stroke(49, 255, 183);
+    stroke(255, 255, 183);
 
     // line weight
     //strokeWeight(map(noise(tx), 0, 1, -lengthRange, lengthRange));
-    strokeWeight(3);
+    strokeWeight(1);
 
     // random x and y to use for line length and location based on noise
     // should be smoother than random above

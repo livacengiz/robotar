@@ -19,7 +19,10 @@ Mixer.Info[] mixerInfo;
 ParticleSystem ps;
 float s;
 float robotar;
+float mappedRobotar;
 float t = 0;
+
+float streetBuffer;
 
 // ========MOVER======
 
@@ -135,9 +138,16 @@ void draw( ) {
 
 	// STREET SOUND
 	for(int i = 0; i < in.bufferSize() -1; i++){
-		setupStreet(in.left.get(i)*200);
+    if (in.left.get(i)*50 > 1.5) {
+      streetBuffer = in.left.get(i)*300;
+    }
 	}
+  float mappedStreetBuffer = map(streetBuffer, 0, 15, 0, width);
+  ps.addParticle(streetBuffer, new PVector(random(20, mappedStreetBuffer), random(10,height-10)));
+  streetBuffer = 0;
+  ps.run();
 	// ROBOTAR SOUND
+
 	for(int i = 0; i < robotarInput.bufferSize() -1; i++){
 		if (robotarInput.left.get(i)*200  > 0.3 && robotarInput.left.get(i)*200 < 14)  {
           robotar = robotarInput.left.get(i)*200;
@@ -145,32 +155,41 @@ void draw( ) {
 	}
 
 	// ====================================== SOUND END ============================
-pushMatrix();
-	beginShape();
-    float mappedRobotar = map(robotar, 0, 12, 0, 1);
-    float rt = constrain(mappedRobotar, 0, 1);
-		stroke(255);
 
-		strokeWeight(4);
-		smooth();
-		translate(width/2,height/2);
-		for (float theta = 0; theta <= 2 * PI; theta += 0.01) {
-			float rad = r(theta,
-				2, //a
-        		1, //b
-				1, // m
-				1, // n1
-				sin(t) * 0.05 + 0.05, //n2
-				cos(t) * 0.05 + 0.05 //n3
-			);
-			float x = rad * cos(theta) * 150;
-			float y = rad * sin(theta) * 150;
-			vertex(x,y);
-		}
-	endShape();
-popMatrix();
+    edgePadding = map(robotar, 0, 12, 0, 200);
+    
+//    float topspeed = 15;
+//float noneTrackScale = 1;
+//float trackScale = 3;
+//float lengthRange = 30;
+//float edgePadding = 100;
+    //float rt = constrain(mappedRobotar, 0, 1);
+//pushMatrix();
+//	beginShape();
+//    float mappedRobotar = map(robotar, 0, 12, 0, 1);
+//    float rt = constrain(mappedRobotar, 0, 1);
+//		stroke(255);
 
-	t = t + 0.00005 + rt;
+//		strokeWeight(4);
+//		smooth();
+//		translate(width/2,height/2);
+//		for (float theta = 0; theta <= 2 * PI; theta += 0.01) {
+//			float rad = r(theta,
+//				2, //a
+//        		1, //b
+//				1, // m
+//				1, // n1
+//				sin(t) * 0.05 + 0.05, //n2
+//				cos(t) * 0.05 + 0.05 //n3
+//			);
+//			float x = rad * cos(theta) * 150;
+//			float y = rad * sin(theta) * 150;
+//			vertex(x,y);
+//		}
+//	endShape();
+//popMatrix();
+
+	t = t + 0.00005;
 
   if (t > height/2) {
     t = 0;
@@ -188,12 +207,6 @@ void mousePressed() {
   println(frameRate);
 }
 
-void setupStreet(bufferSize) {
-	if (bufferSize > 0.3) {
-		ps.addParticle(s, new PVector(random(0, width), random(10,height-10)));
-		ps.run();
-	}
-}
 
 // function calls the update of a mover and gives it a random choice between two joints
 // this creates the bone effect
