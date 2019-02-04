@@ -63,14 +63,14 @@ class Mover {
       // use the joint passed in the find it's X and Y coordinates
       desiredX = joint.getX();
       desiredY = joint.getY();
-      maxSpeed = topspeed*0.9;
-      scale = trackScale;
+      maxSpeed = topspeed;
+      scale = trackScale/2;
 
       //if a joint isn't tracked/off screen, it has a postition of -infinity
       if (desiredX == Float.NEGATIVE_INFINITY || desiredY == Float.NEGATIVE_INFINITY) {
 
-        desiredX = map(noise(tx), 0, 1, width*-4, width*5);
-        desiredY = map(noise(ty), 0, 1, height*-4, height*5);
+        desiredX = map(noise(tx), 0, 1, width, width);
+        desiredY = map(noise(ty), 0, 1, height, height);
       }
     }
 
@@ -83,9 +83,6 @@ class Mover {
     dir.normalize();     // Normalize
     dir.mult(scale);       // Scale
     acceleration = dir;  // Set to acceleration
-
-    // add separation
-    //acceleration.add(separate(movers));
 
     // Motion 101!  Velocity changes by acceleration.  Location changes by velocity.
     velocity.add(acceleration);
@@ -108,13 +105,20 @@ class Mover {
   }
 
   //draw the mover on screen
-  void display(float robotarFFT, color particleColor) {
+  void display(boolean isJoint, float robotarFFT ) {
     // line colour
-    stroke(particleColor, robotarFFT);
+    if (isJoint) {
+      stroke(255, robotarFFT);
+      strokeWeight(robotarFFT/3);
+    } else {
+      stroke(white, 100);
+      strokeWeight(1);
+    }
+
 
     // line weight
-    //strokeWeight(map(noise(tx), 0, 1, -lengthRange, lengthRange));
-    strokeWeight(1);
+    // strokeWeight(map(noise(tx), 0, 1, -lengthRange, lengthRange));
+
 
     // random x and y to use for line length and location based on noise
     // should be smoother than random above

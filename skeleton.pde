@@ -80,7 +80,7 @@ static int[][] bones = {
   //extra body joints that make the cross
   { KinectPV2.JointType_HipRight, KinectPV2.JointType_ShoulderRight },
   { KinectPV2.JointType_HipLeft, KinectPV2.JointType_ShoulderLeft },
-  { KinectPV2.JointType_HipLeft, KinectPV2.JointType_ShoulderRight },
-  { KinectPV2.JointType_HipRight, KinectPV2.JointType_ShoulderLeft }
+  // { KinectPV2.JointType_HipLeft, KinectPV2.JointType_ShoulderRight },
+  // { KinectPV2.JointType_HipRight, KinectPV2.JointType_ShoulderLeft }
 
 };

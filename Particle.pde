@@ -5,8 +5,8 @@ class Particle {
 	float lifespan;
 
 	Particle(PVector l) {
-		acceleration = new PVector(0.005, 0.02);
-		velocity = new PVector(random(-1, 1), random(-1, 1));
+		acceleration = new PVector(0.008, 0.02);
+		velocity = new PVector(random(-1, 1), random(0, 1));
 		position = l.copy();
 		lifespan = 255.0;
 	}
@@ -24,10 +24,10 @@ class Particle {
 
 	void display() {
 		// stroke(255,0,0,  lifespan);
-		fill(255, 0, lifespan, lifespan);
+		fill(firered, lifespan);
 		// fill(204, lifespan);
 		noStroke();
-		rect(position.x,position.y,7,100);
+		rect(position.x,position.y,60,8);
 	}
 
 	boolean isDead() {

@@ -33,17 +33,14 @@ float streetBuffer;
 //skeleton variables
 int numBones = bones.length;
 //int numJoints = 26;
-static int numParticles = 500;
+static int numParticles = 400;
 
 // global particle vars
-float topspeed = 15;
+float topspeed = 12;
 float noneTrackScale = 1;
-float trackScale = 2;
+float trackScale = 6;
 float lengthRange = 30;
-float edgePadding = 10;
-
-// toggle the help text
-boolean showHelp = false;
+float edgePadding = 40;
 
 
 Mover[][] movers;
@@ -56,6 +53,7 @@ color white = color(255, 255, 255);
 color blue = color(0, 0, 255);
 color green = color(0, 255, 0);
 color firered = color(255, 0, 77);
+color saks = color(18, 3, 152);
 int aspect = 4;
 
 
@@ -81,7 +79,7 @@ void setup() {
 
 	// KINECT SETUP
 	kinect = new KinectPV2(this);
-	 //kinect.enableBodyTrackImg(true);
+	// kinect.enableBodyTrackImg(true);
   kinect.enableSkeletonColorMap(true);
      //kinect.enableDepthMaskImg(true);
 
@@ -90,8 +88,7 @@ void setup() {
 	noStroke();
 	smooth();
 	ps = new ParticleSystem();
-	colorMode(HSB, 255, 255, 255, 100);
-
+	// colorMode(HSB, 255, 255, 255, 100);
 }
 
 void draw( ) {
@@ -112,12 +109,12 @@ void draw( ) {
 
 	// STREET SOUND
 	for(int i = 0; i < in.bufferSize() -1; i++){
-		if (in.left.get(i)*50 > 1.5) {
+		if (in.left.get(i)*50 > 0.2) {
 			streetBuffer = in.left.get(i)*300;
 		}
 	}
 	float mappedStreetBuffer = map(streetBuffer, 0, 15, 0, width);
-	ps.addParticle(streetBuffer, new PVector(random(20, mappedStreetBuffer), random(10,height-10)));
+	ps.addParticle(streetBuffer*2, new PVector(random(0, width), random(10,height-10)));
 	streetBuffer = 0;
 	ps.run();
 
@@ -127,7 +124,7 @@ void draw( ) {
 	for(int i = 0; i < robotarFFT.specSize(); i++){
 		mappedRobotar = robotarFFT.getBand(i)*255;
 	}
-	mappedRobotar = constrain(mappedRobotar, 40, 100);
+	mappedRobotar = constrain(mappedRobotar, 10, 100);
 	// println(mappedRobotar);
 
 	// ====================================== SOUND END ============================
@@ -177,7 +174,6 @@ void mousePressed() {
 // function calls the update of a mover and gives it a random choice between two joints
 // this creates the bone effect
 void updateMoverToJoints(int[] bone, Mover[] JointMovers, KJoint[] joints) {
-
   int limit = (bone.length > 2) ? bone[2] : numParticles;
 
   //loop through the movers passed in
@@ -188,11 +184,10 @@ void updateMoverToJoints(int[] bone, Mover[] JointMovers, KJoint[] joints) {
 
     //check if random number is even. set the the joint
     int joint = (num%2 == 0) ? bone[0] : bone[1];
-
     //update and display the movers
     JointMovers[a].update(joints[joint]);
     // JointMovers[a].checkEdges();
-    JointMovers[a].display(mappedRobotar, white);
+    JointMovers[a].display(true, mappedRobotar);
   }
 }
 
@@ -209,7 +204,7 @@ void updateMoversToRandom(){
       // send null to show no joint available, mover will pick a random direction
       movers[x][a].update(null);
       movers[x][a].checkEdges();
-      movers[x][a].display(255, white);
+      movers[x][a].display(false, 0);
     }
   }
 }
