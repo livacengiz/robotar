@@ -63,7 +63,7 @@ class Mover {
       // use the joint passed in the find it's X and Y coordinates
       desiredX = joint.getX();
       desiredY = joint.getY();
-      maxSpeed = topspeed;
+      maxSpeed = topspeed*0.9;
       scale = trackScale;
 
       //if a joint isn't tracked/off screen, it has a postition of -infinity
@@ -93,8 +93,8 @@ class Mover {
     location.add(velocity);
 
     // move noise wave along to get next random number
-    tx += 0.001;
-    ty += 0.001;
+    tx += 0.0001;
+    ty += 0.0001;
 
     // just in case these get too high, might not be needed
     if (tx > 2100000000 ){
@@ -108,10 +108,9 @@ class Mover {
   }
 
   //draw the mover on screen
-  void display() {
-
+  void display(float robotarFFT, color particleColor) {
     // line colour
-    stroke(255, 255, 183);
+    stroke(particleColor, robotarFFT);
 
     // line weight
     //strokeWeight(map(noise(tx), 0, 1, -lengthRange, lengthRange));

@@ -1,6 +1,7 @@
 // LIBRARIES
 import ddf.minim.*;
 import ddf.minim.signals.*;
+import ddf.minim.analysis.*;
 import javax.sound.sampled.*;
 import KinectPV2.*;
 import KinectPV2.KJoint;
@@ -14,12 +15,15 @@ Minim minim;
 Minim minim1;
 AudioInput in;
 AudioInput robotarInput;
+FFT robotarFFT;
 Mixer.Info[] mixerInfo;
+
+
 
 ParticleSystem ps;
 float s;
 float robotar;
-float mappedRobotar;
+float mappedRobotar = 0;
 float t = 0;
 
 float streetBuffer;
@@ -29,14 +33,14 @@ float streetBuffer;
 //skeleton variables
 int numBones = bones.length;
 //int numJoints = 26;
-static int numParticles = 300;
+static int numParticles = 500;
 
 // global particle vars
 float topspeed = 15;
 float noneTrackScale = 1;
-float trackScale = 3;
+float trackScale = 2;
 float lengthRange = 30;
-float edgePadding = 100;
+float edgePadding = 10;
 
 // toggle the help text
 boolean showHelp = false;
@@ -51,6 +55,7 @@ color black = color(0, 0, 0);
 color white = color(255, 255, 255);
 color blue = color(0, 0, 255);
 color green = color(0, 255, 0);
+color firered = color(255, 0, 77);
 int aspect = 4;
 
 
@@ -70,12 +75,14 @@ void setup() {
 	in = minim.getLineIn(Minim.MONO);
 
 	minim1.setInputMixer(AudioSystem.getMixer(mixerInfo[4]));
-    robotarInput = minim1.getLineIn(Minim.MONO);
+  robotarInput = minim1.getLineIn(Minim.MONO);
+	robotarFFT = new FFT( robotarInput.bufferSize(), robotarInput.sampleRate() );
+	robotarFFT.linAverages( 50 );
 
 	// KINECT SETUP
 	kinect = new KinectPV2(this);
 	 //kinect.enableBodyTrackImg(true);
-  	kinect.enableSkeletonColorMap(true);
+  kinect.enableSkeletonColorMap(true);
      //kinect.enableDepthMaskImg(true);
 
     kinect.init();
@@ -83,7 +90,7 @@ void setup() {
 	noStroke();
 	smooth();
 	ps = new ParticleSystem();
-	colorMode(HSB, 255, 255, 255, 255);
+	colorMode(HSB, 255, 255, 255, 100);
 
 }
 
@@ -91,13 +98,40 @@ void draw( ) {
 	background(0);
 	in.disableMonitoring();
 	robotarInput.disableMonitoring();
+	robotarFFT.forward(robotarInput.left);
 
+	// frameRate
 	pushMatrix();
 		fill(255, 0, 255);
 		textSize(32);
 		stroke(255);
 		text(frameRate, 200, 30);
 	popMatrix();
+
+	// ====================================== SOUND START ============================
+
+	// STREET SOUND
+	for(int i = 0; i < in.bufferSize() -1; i++){
+		if (in.left.get(i)*50 > 1.5) {
+			streetBuffer = in.left.get(i)*300;
+		}
+	}
+	float mappedStreetBuffer = map(streetBuffer, 0, 15, 0, width);
+	ps.addParticle(streetBuffer, new PVector(random(20, mappedStreetBuffer), random(10,height-10)));
+	streetBuffer = 0;
+	ps.run();
+
+
+	// ROBOTAR SOUND
+
+	for(int i = 0; i < robotarFFT.specSize(); i++){
+		mappedRobotar = robotarFFT.getBand(i)*255;
+	}
+	mappedRobotar = constrain(mappedRobotar, 40, 100);
+	// println(mappedRobotar);
+
+	// ====================================== SOUND END ============================
+
 
 	// ====================================== SKELETON START ============================
 
@@ -133,74 +167,6 @@ void draw( ) {
     }
 
 	// ====================================== SKELETON END ============================
-
-	// ====================================== SOUND START ============================
-
-	// STREET SOUND
-	for(int i = 0; i < in.bufferSize() -1; i++){
-    if (in.left.get(i)*50 > 1.5) {
-      streetBuffer = in.left.get(i)*300;
-    }
-	}
-  float mappedStreetBuffer = map(streetBuffer, 0, 15, 0, width);
-  ps.addParticle(streetBuffer, new PVector(random(20, mappedStreetBuffer), random(10,height-10)));
-  streetBuffer = 0;
-  ps.run();
-	// ROBOTAR SOUND
-
-	for(int i = 0; i < robotarInput.bufferSize() -1; i++){
-		if (robotarInput.left.get(i)*200  > 0.3 && robotarInput.left.get(i)*200 < 14)  {
-          robotar = robotarInput.left.get(i)*200;
-      }
-	}
-
-	// ====================================== SOUND END ============================
-
-    edgePadding = map(robotar, 0, 12, 0, 200);
-    
-//    float topspeed = 15;
-//float noneTrackScale = 1;
-//float trackScale = 3;
-//float lengthRange = 30;
-//float edgePadding = 100;
-    //float rt = constrain(mappedRobotar, 0, 1);
-//pushMatrix();
-//	beginShape();
-//    float mappedRobotar = map(robotar, 0, 12, 0, 1);
-//    float rt = constrain(mappedRobotar, 0, 1);
-//		stroke(255);
-
-//		strokeWeight(4);
-//		smooth();
-//		translate(width/2,height/2);
-//		for (float theta = 0; theta <= 2 * PI; theta += 0.01) {
-//			float rad = r(theta,
-//				2, //a
-//        		1, //b
-//				1, // m
-//				1, // n1
-//				sin(t) * 0.05 + 0.05, //n2
-//				cos(t) * 0.05 + 0.05 //n3
-//			);
-//			float x = rad * cos(theta) * 150;
-//			float y = rad * sin(theta) * 150;
-//			vertex(x,y);
-//		}
-//	endShape();
-//popMatrix();
-
-	t = t + 0.00005;
-
-  if (t > height/2) {
-    t = 0;
-  }
-
-}
-
-
-float r(float theta, float a, float b, float m, float n1, float n2, float n3) {
-	return pow(pow(abs(cos(m * theta / 4.0) / a), n2) + pow(abs(sin(m * theta / 4.0) / b), n3), 1.0 / n1);
-	// return 1;
 }
 
 void mousePressed() {
@@ -225,8 +191,8 @@ void updateMoverToJoints(int[] bone, Mover[] JointMovers, KJoint[] joints) {
 
     //update and display the movers
     JointMovers[a].update(joints[joint]);
-    //JointMovers[a].checkEdges();
-    JointMovers[a].display();
+    // JointMovers[a].checkEdges();
+    JointMovers[a].display(mappedRobotar, white);
   }
 }
 
@@ -243,7 +209,7 @@ void updateMoversToRandom(){
       // send null to show no joint available, mover will pick a random direction
       movers[x][a].update(null);
       movers[x][a].checkEdges();
-      movers[x][a].display();
+      movers[x][a].display(255, white);
     }
   }
 }
